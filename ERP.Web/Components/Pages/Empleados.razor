@@ -1,11 +1,126 @@
-﻿@page "/Empleados"
+﻿@page "/empleados"
+@inject IEmpleadoService EmpleadoService
 
+<h3>Gestión de Empleados</h3>
 
+<button @onclick="Agregar" class="btn btn-success">Nuevo Empleado</button>
 
-<h3>
-    Clientes
-    <span @onclick="Agregar" class="btn btn-outline-success">+</span>
-</h3>
+@if (ShowForm)
+{
+    <div class="card">
+        <div class="card-header">@Titulo</div>
+        <div class="card-body">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input class="form-control" @bind="Request.DatosPersonales.Nombre" />
+            </div>
+            <div class="form-group">
+                <label>Fecha de Nacimiento</label>
+                <input class="form-control" type="date" @bind="Request.DatosPersonales.FechaDeNacimiento" />
+            </div>
+            <div class="form-group">
+                <label>Sueldo</label>
+                <input class="form-control" type="number" @bind="Request.Sueldo" />
+            </div>
+        </div>
+        <div class="card-footer">
+            <button @onclick="Guardar" class="btn btn-primary">Guardar</button>
+            <button @onclick="Cancelar" class="btn btn-danger">Cancelar</button>
+        </div>
+    </div>
+}
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Fecha de Nacimiento</th>
+            <th>Sueldo</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var empleado in Listado)
+        {
+            <tr>
+                <td>@empleado.Id</td>
+                <td>@empleado.DatosPersonales.Nombre</td>
+                <td>@(empleado.DatosPersonales.FechaDeNacimiento?.ToString("dd/MM/yyyy") ?? "N/A")</td>
+                <td>@empleado.Sueldo.ToString("N2")</td>
+                <td>
+                    <button @onclick="() => Modificar(empleado.Id)" class="btn btn-warning">Editar</button>
+                    <button @onclick="() => Eliminar(empleado.Id)" class="btn btn-danger">Eliminar</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
 @code {
+    public string Titulo { get; set; } = "";
+    public EmpleadoDto Request { get; set; } = new();
+    public List<EmpleadoDto> Listado { get; set; } = new();
+    public bool ShowForm { get; set; } = false;
 
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarEmpleados();
+    }
+
+    private async Task CargarEmpleados()
+    {
+        Listado = await EmpleadoService.Consultar("");
+    }
+
+    private void Agregar()
+    {
+        Request = new();
+        Titulo = "Agregar Empleado";
+        ShowForm = true;
+    }
+
+    private void Modificar(int id)
+    {
+        var empleado = Listado.FirstOrDefault(e => e.Id == id);
+        if (empleado != null)
+        {
+            Request = new EmpleadoDto
+                {
+                    Id = empleado.Id,
+                    PersonaId = empleado.PersonaId,
+                    Sueldo = empleado.Sueldo,
+                    DatosPersonales = new PersonaDto
+                    {
+                        Id = empleado.DatosPersonales.Id,
+                        Nombre = empleado.DatosPersonales.Nombre,
+                        FechaDeNacimiento = empleado.DatosPersonales.FechaDeNacimiento
+                    }
+                };
+            Titulo = "Editar Empleado";
+            ShowForm = true;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (Request.Id == 0)
+            await EmpleadoService.Crear(Request);
+        else
+            await EmpleadoService.Modificar(Request);
+
+        await CargarEmpleados();
+        ShowForm = false;
+    }
+
+    private async Task Eliminar(int id)
+    {
+        await EmpleadoService.Eliminar(id);
+        await CargarEmpleados();
+    }
+
+    private void Cancelar()
+    {
+        ShowForm = false;
+    }
 }
